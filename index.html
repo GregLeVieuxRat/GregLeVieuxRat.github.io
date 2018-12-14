@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<style>
+  .axis .domain {
+    display: none;
+  }
+
+  h1, h4{
+      text-align: center
+  }
+  
+  h2{
+      text-align: right
+  }  
+  
+  .switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 20px;
+}
+
+.switch input { 
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: green;
+  -webkit-transition: 1s;
+  transition: 1s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 4px;
+  bottom: 2px;
+  background-color: white;
+  -webkit-transition: 1s;
+  transition: 1s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(36px);
+  -ms-transform: translateX(36px);
+  transform: translateX(36px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+  
+</style>
+<body>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+  <div>
+    <h1> TP#4 Transition grouped bar chart et stacked bar chart </h1> 
+    <h2> by Grégory Gaugy </h2>
+    <h4> Stacked
+      <label class="switch">
+        <input type="checkbox" name="mode">
+        <span class="slider round"></span>
+      </label>
+      Grouped 
+    </h4>
+  </div>
+<script>
+
+// Source: https://bl.ocks.org/mbostock/3886208
+var n = 10, // number of samples (columns)
+    m = 5; // number of series (layers)
+
+var data = d3.range(n).map(function() { 
+  return d3.range(m).map(Math.random); 
+});
+
+var margin = {top: 20, right: 30, bottom: 30, left: 40},
+    width = 960 - margin.left - margin.right,
+    height = 350 - margin.top - margin.bottom;
+
+// Stacked
+var y = d3.scaleLinear()
+		.domain([0, m])
+    .rangeRound([height, 0])
+		.nice();
+
+var x = d3.scaleBand()
+    .rangeRound([0, width])
+    .paddingInner(0.05)
+    .align(0.1)
+    .domain(d3.range(n));
+  
+ // Grouped
+  var yGrouped = d3.scaleLinear()
+  .domain([0, 1])
+  .range([height, 0]);
+
+
+
+var z = d3.scaleOrdinal()
+    .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
+
+var layers = d3.stack().keys(d3.range(m))(data);
+  
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+svg.append("g").selectAll("g")
+    	.data(layers)
+  .enter().append("g")
+    .style("fill", function(d) { return z(d.key); })	
+    .selectAll("rect")
+  .data(function(d) { return d; })
+    .enter().append("rect")
+      .attr("x", function(d, i) { return x(i); })
+      .attr("y", function(d) { return y(d[1]); })
+      .attr("height", function(d) { return y(d[0]) - y(d[1]); })
+      .attr("width", x.bandwidth());
+  
+d3.selectAll("input").on("click", function() {
+	if (this.checked) {
+    svg.select("g").selectAll("g").each(function (dg, idxRectInChart) {
+      d3.select(this).selectAll("rect")
+        .transition().duration(1000).ease(d3.easeCubicIn)
+        .attr("x", function(d, idxChart) { 
+          //console.log(idxChart + ' -- ' + idxRectInChart); 
+          return x(idxChart) + idxRectInChart * (x.bandwidth() / m); 
+        })
+        .attr("width", function() { return x.bandwidth() / m; })
+        .transition().duration(1000).ease(d3.easeCubicOut)
+        .attr("y", function(d) { 
+          return height - (yGrouped(d[0])-yGrouped(d[1]));
+        })
+        .attr("height", function(d) { return yGrouped(d[0]) - yGrouped(d[1]); });
+    });
+  } else {
+    svg.select("g").selectAll("g").each(function (dg, idxRectInChart) {
+      d3.select(this).selectAll("rect")
+        .transition().duration(1000).ease(d3.easeCubicIn)
+        .attr("y", function(d) { return y(d[1]); })
+        .attr("height", function(d) { return y(d[0]) - y(d[1]); })
+        .transition().duration(1000).ease(d3.easeCubicOut)
+        .attr("x", function(d, idxChart) { return x(idxChart); })
+        .attr("width", x.bandwidth());
+    });
+  }
+});
+
+</script>
