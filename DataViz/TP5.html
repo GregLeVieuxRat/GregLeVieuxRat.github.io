@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<head>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <style>
+    body {
+      margin:0;
+      position:fixed;
+      top:0;
+      right:0;
+      bottom:0;
+      left:0;
+    }
+
+    h1, h2, h4 {
+      font-family: SansationBold, 'trebuchet ms', helvetica, arial, sans-serif;
+      font-variant: small-caps;
+      text-shadow: 1px 1px 1px #A9A9A9;
+  }
+
+    h1{
+      border-bottom:1px dashed green;
+      text-align: center;
+    }
+
+    h4{
+      text-align: center;
+    }
+
+    h2{
+        text-align: right;
+
+    }
+
+    div.tooltip {
+        color: #222;
+        background-color: #fff;
+        padding: .5em;
+        text-shadow: #f5f5f5 0 1px 0;
+        border-radius: 20%;
+      	border:1px solid;
+        opacity: 0.9;
+        position: absolute;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .slidecontainer {
+      width: 50%;
+      margin-left: 	auto;
+      margin-right: auto;
+    }
+
+    .slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 15px;
+      border-radius: 5px;
+      background: #d3d3d3;
+      outline: none;
+      opacity: 0.7;
+      -webkit-transition: .2s;
+      transition: opacity .2s;
+    }
+
+
+    .slider:hover {
+      opacity: 1;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: #4CAF50;
+      cursor: pointer;
+    }
+
+    .slider::-moz-range-thumb {
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: #4CAF50;
+      cursor: pointer;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div>
+    <h1>TP5 DataViz: Données spatiales avec D3.js</h1>
+    <h2> by Grégory Gaugy</h2>
+    <div class="slidecontainer">
+      <h4>Date : <span id="week">All</span> </h4>
+      <input id="slider" type="range" min="1" max="52" value="1" class="slider" id="myRange">
+    </div>
+  </div>
+
+  <script>
+
+		var width = 700,
+  		  height = 580;
+
+		var svg = d3.select( "body" )
+  		.append( "svg" )
+		  .attr( "width", width )
+		  .attr( "height", height );
+
+    // On rajoute un groupe englobant toute la visualisation pour plus tard
+    var g = svg.append( "g" );
+
+    var projection = d3.geoConicConformal().center([2.454071, 46.279229]).scale(2800);
+
+    var path = d3.geoPath() // d3.geo.path avec d3 version 3
+                 .projection(projection);
+
+    var tooltip = d3.select('body').append('div')
+            .attr('class', 'hidden tooltip');
+
+		// Chargement des donnees
+		d3.csv("GrippeFrance2014.csv", function(data) {
+				//Set input domain for color scale
+				var color = d3.scaleLinear().domain([0,2000])
+                    .interpolate(d3.interpolateHcl)
+                    .range([d3.rgb("#66cd64"), d3.rgb('#007f04')]);;
+
+     		d3.json("regions.json", function(json) {
+
+          // Try to add Slider
+          var weeksArray = Object.keys(data[0]);
+          var dataAll =[];
+
+          //On fusionne les donnees avec le GeoJSON
+	        for (var i = 0; i < data.length; i++) {
+
+
+            // Try to add Slider
+            dataAll[i] = Object.values(data[i]);
+
+            //Nom de l'etat
+            var dataState = data[i].region;
+
+            //Valeur associee a l'etat
+            var dataValue = parseFloat(data[i].somme2014);
+
+
+            //Recherche de l'etat dans le GeoJSON
+            for (var j = 0; j < json.features.length; j++) {
+                var jsonState = json.features[j].properties.nom;
+                if (dataState == jsonState) {
+                    //On injecte la valeur de l'Etat dans le json
+                    json.features[j].properties.value = dataValue;
+
+
+                    //Pas besoin de chercher plus loin
+                    break;
+                }
+            }
+        }
+
+          // Try to add Slider
+          d3.select("#slider").on("input", function() {
+            updateViz(+this.value);
+          });
+
+          // update the elements
+          function updateViz(value) {
+            console.log("update " + "value" + value);
+            d3.select('#week').html(weeksArray[value]);
+            //drawMap(value);
+          }
+
+
+        g.selectAll("path")
+            .data(json.features)
+            .enter()
+            .append("path")
+            .attr("d", path)
+            .style("fill", function(d) {
+                //on prend la valeur recupere plus haut
+                var value = d.properties.value;
+
+
+                if (value) {
+                    return color(value);
+                } else {
+                    // si pas de valeur alors en gris
+                    return "#ccc";
+                }
+        		})
+        		.on('mousemove', function(d) {
+              var mouse = d3.mouse(svg.node()).map(function(d) {
+                return parseInt(d);
+              });
+              tooltip.classed('hidden', false)
+                .attr('style', 'left:' + (mouse[0] + 15) +
+                      'px; top:' + (mouse[1] + 100) + 'px')
+                .html(d.properties.nom+' : '+d.properties.value+' cas');
+            })
+              .on('mouseout', function() {
+              tooltip.classed('hidden', true);
+            });
+        });
+    });
+
+
+
+  </script>
+
+</body>
